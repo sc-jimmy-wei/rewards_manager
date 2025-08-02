@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title d-flex align-items-center">
+        <i class="bi bi-credit-card-2-front me-3"></i>
+        {{ card.bank }} {{ card.name }}
+    </h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('credit_card.edit_card', card_id=card.id) }}" class="btn btn-outline-primary d-flex align-items-center">
+            <i class="bi bi-pencil me-2"></i>
+            Edit Card
+        </a>
+        <a href="{{ url_for('credit_card.index') }}" class="btn btn-outline-secondary d-flex align-items-center">
+            <i class="bi bi-arrow-left me-2"></i>
+            Back
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-body p-4">
+                <div class="credit-card-image-container mb-4">
+                    {% if card.image_filename %}
+                        <img src="{{ url_for('static', filename='uploads/' + card.image_filename) }}" 
+                             class="credit-card-image" alt="{{ card.bank }} {{ card.name }}">
+                    {% elif card.template_image_url %}
+                        <img src="{{ card.template_image_url }}" 
+                             class="credit-card-image" 
+                             alt="{{ card.bank }} {{ card.name }}"
+                             onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22190%22><rect width=%22100%%22 height=%22100%%22 fill=%22%23007bff%22/><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22Arial%22 font-size=%2220%22>{{ card.bank }}</text></svg>';">
+                    {% else %}
+                        <div class="credit-card-image credit-card-placeholder">
+                            <i class="bi bi-credit-card"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <h5 class="card-title mb-4">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Card Information
+                </h5>
+                
+                <div class="mb-3 p-3 rounded border">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-building me-3 text-primary"></i>
+                        <div>
+                            <small class="text-muted d-block">Bank</small>
+                            <span class="fw-medium">{{ card.bank }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3 p-3 rounded border">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-credit-card me-3 text-primary"></i>
+                        <div>
+                            <small class="text-muted d-block">Card Type</small>
+                            <span class="fw-medium">{{ card.card_type }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if card.opening_date %}
+                <div class="mb-3 p-3 rounded border">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-calendar-date me-3 text-primary"></i>
+                        <div>
+                            <small class="text-muted d-block">Opening Date</small>
+                            <span class="fw-medium">{{ card.opening_date.strftime('%B %d, %Y') }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if card.credit_limit %}
+                <div class="mb-3 p-3 rounded border">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-currency-dollar me-3 text-primary"></i>
+                        <div>
+                            <small class="text-muted d-block">Credit Limit</small>
+                            <span class="fw-medium">${{ "{:,}".format(card.credit_limit) }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if card.account_type %}
+                <div class="mb-3 p-3 rounded border">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-person-badge me-3 text-primary"></i>
+                        <div>
+                            <small class="text-muted d-block">Account Type</small>
+                            <span class="fw-medium">{{ card.account_type }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="mb-3 p-3 rounded border">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-award me-3 text-primary"></i>
+                        <div>
+                            <small class="text-muted d-block">Credit Benefits</small>
+                            <span class="fw-medium">{{ credit_benefits | length }} items</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-3 rounded border">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-gift me-3 text-primary"></i>
+                        <div>
+                            <small class="text-muted d-block">Reward Benefits</small>
+                            <span class="fw-medium">{{ reward_benefits | length }} items</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-body p-4">
+                <!-- Credit Benefits Section -->
+                {% if credit_benefits %}
+                <div class="mb-4">
+                    <h5 class="card-title mb-3">
+                        <i class="bi bi-award me-2"></i>
+                        Credit Benefits Tracker
+                    </h5>
+                    
+                    <div class="benefits-tracker">
+                        <form id="credit-benefits-form">
+                            {% for benefit in credit_benefits %}
+                            <div class="benefit-item mb-3 p-3 rounded" style="background: var(--bg-secondary); border: 1px solid var(--border-color); transition: all 0.2s ease;">
+                                <div class="form-check d-flex align-items-start">
+                                    <input class="form-check-input me-3 mt-1" type="checkbox" 
+                                           id="credit-benefit-{{ loop.index0 }}" 
+                                           value="{{ benefit.name }}"
+                                           {% if usage.get(benefit.name) %}checked{% endif %}
+                                           onchange="updateBenefitUsage()"
+                                           style="transform: scale(1.2);">
+                                    <label class="form-check-label flex-grow-1" for="credit-benefit-{{ loop.index0 }}" style="cursor: pointer;">
+                                        <span class="d-block">{{ benefit.name }}</span>
+                                        <small class="badge bg-warning text-dark me-2">Credit</small>
+                                        {% if usage.get(benefit.name) %}
+                                            <small class="text-success">
+                                                <i class="bi bi-check-circle-fill me-1"></i>
+                                                Used
+                                            </small>
+                                        {% else %}
+                                            <small class="text-muted">
+                                                <i class="bi bi-circle me-1"></i>
+                                                Available
+                                            </small>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </form>
+                        
+                        <div class="mt-3 p-3 rounded" style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.2);">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <small class="text-secondary d-block mb-1">Credit Usage Progress</small>
+                                    <div class="d-flex align-items-center">
+                                        <span class="text-warning fw-medium me-2" id="credit-progress-count">
+                                            {{ credit_usage_count }} / {{ credit_benefits | length }}
+                                        </span>
+                                        <small class="text-muted">credit benefits used</small>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-warning text-dark" id="credit-progress-badge" style="font-size: 0.9rem;">
+                                        {{ credit_percentage }}%
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="progress mt-2" style="height: 6px; background: var(--bg-primary);">
+                                <div class="progress-bar bg-warning" style="width: {{ credit_percentage }}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Reward Benefits Section -->
+                {% if reward_benefits %}
+                <div class="mb-4">
+                    <h5 class="card-title mb-3">
+                        <i class="bi bi-gift me-2"></i>
+                        Reward Benefits
+                    </h5>
+                    
+                    <div class="benefits-display">
+                        {% for benefit in reward_benefits %}
+                        <div class="benefit-item mb-3 p-3 rounded" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-gift me-3 mt-1 text-primary"></i>
+                                <div class="flex-grow-1">
+                                    <span class="d-block text-white fw-medium">{{ benefit.name }}</span>
+                                    <small class="badge bg-primary">Reward</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if not credit_benefits and not reward_benefits %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-gift" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+                        <h6 class="text-secondary mb-3">No benefits added yet</h6>
+                        <p class="text-muted mb-4">Add benefits to start tracking your usage</p>
+                        <a href="{{ url_for('credit_card.edit_card', card_id=card.id) }}" class="btn btn-outline-primary">
+                            <i class="bi bi-plus-circle me-2"></i>
+                            Add Benefits
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+function updateBenefitUsage() {
+    const checkboxes = document.querySelectorAll('#credit-benefits-form input[type="checkbox"]');
+    const usage = {};
+    
+    checkboxes.forEach(checkbox => {
+        usage[checkbox.value] = checkbox.checked;
+    });
+    
+    fetch(`/update_benefits_usage/{{ card.id }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(usage)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Update the usage indicators for credit benefits only
+            checkboxes.forEach(checkbox => {
+                const label = checkbox.nextElementSibling;
+                const statusElements = label.querySelectorAll('small');
+                const statusElement = statusElements[statusElements.length - 1]; // Get the last small element (status)
+                if (checkbox.checked) {
+                    statusElement.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Used';
+                    statusElement.className = 'text-success';
+                } else {
+                    statusElement.innerHTML = '<i class="bi bi-circle me-1"></i>Available';
+                    statusElement.className = 'text-muted';
+                }
+            });
+            
+            // Update credit progress bar
+            const usedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            const totalCount = checkboxes.length;
+            const percentage = totalCount > 0 ? Math.round((usedCount / totalCount) * 100) : 0;
+            
+            const progressBar = document.querySelector('.progress-bar.bg-warning');
+            const progressText = document.getElementById('credit-progress-count');
+            const progressBadge = document.getElementById('credit-progress-badge');
+            
+            if (progressBar) progressBar.style.width = percentage + '%';
+            if (progressText) progressText.textContent = `${usedCount} / ${totalCount}`;
+            if (progressBadge) progressBadge.textContent = percentage + '%';
+        }
+    })
+    .catch(error => {
+        console.error('Error updating benefits usage:', error);
+    });
+}
+</script>
+
+<style>
+/* Card Detail Page Styles */
+.credit-card-image-container {
+    position: relative;
+    height: 240px;
+    overflow: hidden;
+    border-radius: 0.375rem;
+    background: #000000;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.credit-card-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+    margin: 0 auto;
+}
+
+.credit-card-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+}
+
+.credit-card-placeholder i {
+    font-size: 4rem;
+    opacity: 0.7;
+}
+
+/* Benefit Items */
+.benefit-item:hover {
+    background: var(--bg-tertiary) !important;
+    border-color: var(--accent-color) !important;
+}
+
+.benefit-item .form-check-input:checked + .form-check-label {
+    color: var(--success-color);
+}
+
+.benefit-item .form-check-input:checked ~ * {
+    opacity: 0.8;
+}
+
+/* Text Readability Improvements */
+.card-body .text-muted {
+    color: #adb5bd !important;
+}
+
+.card-body .fw-medium {
+    color: #e9ecef !important;
+    font-weight: 500;
+}
+
+.card-body .border {
+    border-color: #495057 !important;
+}
+
+.card-body .card-title {
+    color: #f8f9fa !important;
+}
+</style>
+
+{% endblock %}

@@ -1,0 +1,1391 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="index-page">
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="bi bi-credit-card-2-front me-3"></i>
+        My Credit Cards
+    </h1>
+    <div class="d-flex gap-2">
+        <form method="POST" action="{{ url_for('credit_card.generate_test_data') }}" class="d-inline">
+            <button type="submit" class="btn btn-outline-warning d-flex align-items-center">
+                <i class="bi bi-database-add me-2"></i>
+                Add Test Data
+            </button>
+        </form>
+        <button type="button" class="btn btn-success d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#quickAddModal">
+            <i class="bi bi-lightning-charge me-2"></i>
+            Quick Add Card
+        </button>
+        <a href="{{ url_for('credit_card.add_card') }}" class="btn btn-primary d-flex align-items-center">
+            <i class="bi bi-plus-circle me-2"></i>
+            Add New Card
+        </a>
+    </div>
+</div>
+
+<!-- Filters Section -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('credit_card.index') }}">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">
+                        <i class="bi bi-search me-2"></i>
+                        Search Card Name
+                    </label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           placeholder="e.g., Sapphire, Gold" value="{{ current_filters.search }}">
+                    <small class="text-muted">Supports regex patterns</small>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="bank" class="form-label">
+                        <i class="bi bi-building me-2"></i>
+                        Bank
+                    </label>
+                    <select class="form-select" id="bank" name="bank">
+                        <option value="">All Banks</option>
+                        {% for bank in banks %}
+                            <option value="{{ bank }}" {% if current_filters.bank == bank %}selected{% endif %}>{{ bank }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted invisible">Placeholder for alignment</small>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="card_type" class="form-label">
+                        <i class="bi bi-credit-card me-2"></i>
+                        Card Type
+                    </label>
+                    <select class="form-select" id="card_type" name="card_type">
+                        <option value="">All Types</option>
+                        {% for card_type in card_types %}
+                            <option value="{{ card_type }}" {% if current_filters.card_type == card_type %}selected{% endif %}>{{ card_type }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted invisible">Placeholder for alignment</small>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label invisible">Actions</label>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-fill">
+                            <i class="bi bi-search me-2"></i>
+                            Search
+                        </button>
+                        <a href="{{ url_for('credit_card.index') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i>
+                        </a>
+                    </div>
+                    <small class="text-muted invisible">Placeholder for alignment</small>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if cards %}
+    <!-- Results Summary -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="text-muted">
+            {% if current_filters.search or current_filters.bank or current_filters.card_type %}
+                Showing {{ cards|length }} filtered result{{ 's' if cards|length != 1 else '' }}
+            {% else %}
+                {{ cards|length }} card{{ 's' if cards|length != 1 else '' }} total
+            {% endif %}
+        </span>
+    </div>
+    
+    <div class="row g-4 credit-card-list">
+        {% for card in cards %}
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100">
+                <!-- Credit Card Header Image/Icon - black background for better image display -->
+                <div class="credit-card-image d-flex align-items-center justify-content-center" 
+                     style="background: #000000; color: white;">
+                    {% if card.image_filename %}
+                        <img src="{{ url_for('static', filename='uploads/' + card.image_filename) }}" 
+                             class="credit-card-image-display" alt="{{ card.bank }} {{ card.name }}">
+                    {% elif card.template_image_url %}
+                        <img src="{{ card.template_image_url }}" 
+                             class="credit-card-image-display" 
+                             alt="{{ card.bank }} {{ card.name }}"
+                             onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22190%22><rect width=%22100%%22 height=%22100%%22 fill=%22%23007bff%22/><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22Arial%22 font-size=%2220%22>{{ card.bank }}</text></svg>';">
+                    {% else %}
+                        <i class="bi bi-credit-card" style="font-size: 3rem; opacity: 0.7;"></i>
+                    {% endif %}
+                </div>
+                
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title mb-3">{{ card.bank }} {{ card.name }}</h5>
+                    <div class="card-text mb-4 flex-grow-1">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-building me-2 text-light"></i>
+                            <span class="text-light">{{ card.bank }}</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-credit-card me-2 text-light"></i>
+                            <span class="text-light">{{ card.card_type }}</span>
+                        </div>
+                        {% if card.opening_date %}
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-calendar me-2 text-light"></i>
+                            <span class="text-light">Opened {{ card.opening_date.strftime('%b %Y') }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-gift me-2 text-light"></i>
+                            <span class="text-light">{{ card.get_benefits_list() | length }} benefits</span>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex flex-wrap gap-2 mt-auto">
+                        <a href="{{ url_for('credit_card.card_detail', card_id=card.id) }}" 
+                           class="btn btn-outline-primary btn-sm flex-fill">
+                            <i class="bi bi-eye me-1"></i>
+                            View
+                        </a>
+                        <a href="{{ url_for('credit_card.edit_card', card_id=card.id) }}" 
+                           class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('credit_card.delete_card', card_id=card.id) }}" class="d-inline" 
+                              onsubmit="return confirm('Are you sure you want to delete this card?')">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="text-center py-5">
+        <div class="mb-4">
+            {% if current_filters.search or current_filters.bank or current_filters.card_type %}
+                <i class="bi bi-funnel" style="font-size: 4rem; color: var(--text-muted);"></i>
+            {% else %}
+                <i class="bi bi-credit-card-2-front" style="font-size: 4rem; color: var(--text-muted);"></i>
+            {% endif %}
+        </div>
+        {% if current_filters.search or current_filters.bank or current_filters.card_type %}
+            <h3 class="text-secondary mb-3">No cards match your filters</h3>
+            <p class="text-muted mb-4">Try adjusting your search criteria or clear the filters.</p>
+            <a href="{{ url_for('credit_card.index') }}" class="btn btn-outline-primary btn-lg d-flex align-items-center justify-content-center mx-auto" style="max-width: 200px;">
+                <i class="bi bi-x-circle me-2"></i>
+                Clear Filters
+            </a>
+        {% else %}
+            <h3 class="text-secondary mb-3">No credit cards yet</h3>
+            <p class="text-muted mb-4">Start by adding your first credit card to track benefits and usage.</p>
+            <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+                <form method="POST" action="{{ url_for('credit_card.generate_test_data') }}" class="d-inline">
+                    <button type="submit" class="btn btn-outline-warning btn-lg d-flex align-items-center justify-content-center" style="min-width: 200px;">
+                        <i class="bi bi-database-add me-2"></i>
+                        Add Test Data
+                    </button>
+                </form>
+                <a href="{{ url_for('credit_card.add_card') }}" class="btn btn-primary btn-lg d-flex align-items-center justify-content-center" style="min-width: 200px;">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    Add Your First Card
+                </a>
+            </div>
+        {% endif %}
+    </div>
+{% endif %}
+
+<!-- Quick Add Card Modal -->
+<div class="modal fade" id="quickAddModal" tabindex="-1" aria-labelledby="quickAddModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%); border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title text-light" id="quickAddModalLabel">
+                    <i class="bi bi-lightning-charge me-2"></i>
+                    Quick Add Credit Card
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" style="max-height: 70vh; overflow-y: auto; background: var(--bg-primary); padding-bottom: 5rem !important;">
+                <div class="alert border-0 mb-4" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%); border: 1px solid rgba(59, 130, 246, 0.2) !important; color: var(--text-primary);">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Select a credit card</strong> to quickly add to your collection. All benefit details are pre-loaded, and you can customize them later.
+                </div>
+                
+                <form method="POST" action="{{ url_for('credit_card.quick_add_card') }}">
+                    <!-- Search Bar -->
+                    <div class="search-container mb-4">
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text border-end-0" style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" class="form-control border-start-0 fs-5" placeholder="Search by bank name or card name..." id="cardSearch" autocomplete="off" style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
+                            <button class="btn btn-outline-secondary" type="button" id="clearSearch" style="border-color: var(--border-color); color: var(--text-secondary);">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div class="mt-2">
+                            <small style="color: var(--text-secondary);">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Search examples: "Chase", "Platinum", "Business", "Travel"
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Selected Cards Summary -->
+                    <div class="selected-cards-summary mb-4" id="selectedCardsSummary" style="display: none;">
+                        <div class="alert border-0 d-flex align-items-center justify-content-between" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2) !important; color: var(--text-primary);">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-check2-circle me-2" style="color: var(--success-color);"></i>
+                                <span id="selectedCardsText">0 cards selected</span>
+                            </div>
+                            <button type="button" class="btn btn-sm" id="clearAllSelections" style="border: 1px solid var(--success-color); color: var(--success-color); background: transparent;">
+                                <i class="bi bi-x-circle me-1"></i>Clear All
+                            </button>
+                        </div>
+                        <div class="selected-cards-list d-flex flex-wrap gap-2" id="selectedCardsList">
+                        </div>
+                    </div>
+
+                    <!-- Chase Bank Section -->
+                    <div class="bank-section mb-5">
+                        <div class="bank-header d-flex align-items-center mb-4 p-4 rounded" style="background: linear-gradient(135deg, #005CBB 0%, #0066CC 100%); color: white;">
+                            <div class="bank-logo me-3">
+                                <i class="bi bi-building" style="font-size: 2rem;"></i>
+                            </div>
+                            <div>
+                                <h3 class="mb-1 fw-bold">Chase</h3>
+                                <p class="mb-0 opacity-75">Premium travel rewards and flexible redemption options</p>
+                            </div>
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Chase,Sapphire Reserved">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-gem text-warning" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Sapphire Reserved</h5>
+                                                <p class="card-text text-muted mb-3">Premium Travel Card</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-success-subtle text-success me-1 mb-1">$300 Travel Credit</span>
+                                                    <span class="badge bg-info-subtle text-info mb-1">3x Points</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Chase,Sapphire Preferred">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-star text-primary" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Sapphire Preferred</h5>
+                                                <p class="card-text text-muted mb-3">Travel & Dining Rewards</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-info-subtle text-info me-1 mb-1">2x Travel</span>
+                                                    <span class="badge bg-info-subtle text-info mb-1">2x Dining</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Chase,Freedom Flex">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-arrow-repeat text-success" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Freedom Flex</h5>
+                                                <p class="card-text text-muted mb-3">Rotating Bonus Categories</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-warning-subtle text-warning me-1 mb-1">5x Quarterly</span>
+                                                    <span class="badge bg-info-subtle text-info mb-1">3x Dining</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Chase,Freedom">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-calendar-check text-info" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Freedom</h5>
+                                                <p class="card-text text-muted mb-3">Quarterly Bonus Categories</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-warning-subtle text-warning mb-1">5x Quarterly</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Chase,Business Ink Cash">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-briefcase text-secondary" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Business Ink Cash</h5>
+                                                <p class="card-text text-muted mb-3">Business Cashback</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-info-subtle text-info me-1 mb-1">5x Office</span>
+                                                    <span class="badge bg-info-subtle text-info mb-1">5x Internet</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Chase,Business Ink Unlimited">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-infinity text-primary" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Business Ink Unlimited</h5>
+                                                <p class="card-text text-muted mb-3">Business Flat Rate</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-info-subtle text-info mb-1">1.5x All Purchases</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Chase,Business Ink Preferred">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-star-fill text-warning" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Business Ink Preferred</h5>
+                                                <p class="card-text text-muted mb-3">Business Premium</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-info-subtle text-info me-1 mb-1">3x Travel</span>
+                                                    <span class="badge bg-info-subtle text-info mb-1">3x Shipping</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Chase,Marriott Bonvoy Boundless">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-building text-danger" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Marriott Bonvoy Boundless</h5>
+                                                <p class="card-text text-muted mb-3">Hotel Co-brand</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-success-subtle text-success me-1 mb-1">Free Night</span>
+                                                    <span class="badge bg-info-subtle text-info mb-1">6x Marriott</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Chase,IHG Premier One Rewards">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-house-door text-info" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">IHG Premier One Rewards</h5>
+                                                <p class="card-text text-muted mb-3">Hotel Co-brand</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-success-subtle text-success me-1 mb-1">Free Night</span>
+                                                    <span class="badge bg-info-subtle text-info mb-1">10x IHG</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- American Express Bank Section -->
+                    <div class="bank-section mb-5">
+                        <div class="bank-header d-flex align-items-center mb-4 p-4 rounded" style="background: linear-gradient(135deg, #006FCF 0%, #0080E5 100%); color: white;">
+                            <div class="bank-logo me-3">
+                                <i class="bi bi-credit-card-2-front" style="font-size: 2rem;"></i>
+                            </div>
+                            <div>
+                                <h3 class="mb-1 fw-bold">American Express</h3>
+                                <p class="mb-0 opacity-75">Premium lifestyle benefits and exceptional service</p>
+                            </div>
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="American Express,Platinum">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-award text-warning" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Platinum Card</h5>
+                                                <p class="card-text text-muted mb-3">Premium Travel & Lifestyle</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-success-subtle text-success me-1 mb-1">$200 Hotel</span>
+                                                    <span class="badge bg-success-subtle text-success mb-1">$200 Uber</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="American Express,Gold">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-star-fill text-warning" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Gold Card</h5>
+                                                <p class="card-text text-muted mb-3">Dining & Grocery Rewards</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-success-subtle text-success me-1 mb-1">$120 Dining</span>
+                                                    <span class="badge bg-info-subtle text-info mb-1">4x Dining</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="American Express,Green">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-leaf text-success" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Green Card</h5>
+                                                <p class="card-text text-muted mb-3">Travel & Transit Focused</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-success-subtle text-success me-1 mb-1">$100 LoungeBuddy</span>
+                                                    <span class="badge bg-info-subtle text-info mb-1">3x Travel</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="American Express,Business Platinum">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-briefcase-fill text-secondary" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Business Platinum</h5>
+                                                <p class="card-text text-muted mb-3">Premium Business Travel</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-success-subtle text-success me-1 mb-1">$200 Airline</span>
+                                                    <span class="badge bg-success-subtle text-success mb-1">$400 Dell</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="American Express,Business Gold">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-building text-warning" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Business Gold</h5>
+                                                <p class="card-text text-muted mb-3">Business Category Bonus</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-info-subtle text-info mb-1">4x Top Categories</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="American Express,Blue Business Plus">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-plus-circle text-primary" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Blue Business Plus</h5>
+                                                <p class="card-text text-muted mb-3">No Fee Business Card</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-info-subtle text-info mb-1">2x All Purchases</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Citi Bank Section -->
+                    <div class="bank-section mb-5">
+                        <div class="bank-header d-flex align-items-center mb-4 p-4 rounded" style="background: linear-gradient(135deg, #D32F2F 0%, #F44336 100%); color: white;">
+                            <div class="bank-logo me-3">
+                                <i class="bi bi-bank" style="font-size: 2rem;"></i>
+                            </div>
+                            <div>
+                                <h3 class="mb-1 fw-bold">Citi</h3>
+                                <p class="mb-0 opacity-75">Flexible rewards and competitive cashback rates</p>
+                            </div>
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Citi,Double Cash">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-cash-stack text-success" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Double Cash</h5>
+                                                <p class="card-text text-muted mb-3">Simple Cashback Card</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-info-subtle text-info mb-1">2% Everything</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Citi,Strata Premier">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-star text-primary" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Strata Premier</h5>
+                                                <p class="card-text text-muted mb-3">Premium Travel Card</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-success-subtle text-success me-1 mb-1">$100 Hotel</span>
+                                                    <span class="badge bg-info-subtle text-info mb-1">3x Travel</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Citi,Strata Elite">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-gem text-warning" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Strata Elite</h5>
+                                                <p class="card-text text-muted mb-3">Elite Travel Card</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-success-subtle text-success me-1 mb-1">$200 Hotel</span>
+                                                    <span class="badge bg-info-subtle text-info mb-1">5x Travel</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Citi,AAdvantage Platinum Select">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-airplane text-danger" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">AAdvantage Platinum Select</h5>
+                                                <p class="card-text text-muted mb-3">American Airlines Co-brand</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-success-subtle text-success me-1 mb-1">$125 AA Credit</span>
+                                                    <span class="badge bg-info-subtle text-info mb-1">2x AA</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Capital One Bank Section -->
+                    <div class="bank-section mb-5">
+                        <div class="bank-header d-flex align-items-center mb-4 p-4 rounded" style="background: linear-gradient(135deg, #004879 0%, #006BB3 100%); color: white;">
+                            <div class="bank-logo me-3">
+                                <i class="bi bi-shield-check" style="font-size: 2rem;"></i>
+                            </div>
+                            <div>
+                                <h3 class="mb-1 fw-bold">Capital One</h3>
+                                <p class="mb-0 opacity-75">Simple rewards with no foreign transaction fees</p>
+                            </div>
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Capital One,Venture X">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-airplane text-primary" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Venture X</h5>
+                                                <p class="card-text text-muted mb-3">Premium Travel Card</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-success-subtle text-success me-1 mb-1">$300 Travel</span>
+                                                    <span class="badge bg-info-subtle text-info mb-1">2x Everything</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bank of America Section -->
+                    <div class="bank-section mb-4">
+                        <div class="bank-header d-flex align-items-center mb-4 p-4 rounded" style="background: linear-gradient(135deg, #E53E3E 0%, #C53030 100%); color: white;">
+                            <div class="bank-logo me-3">
+                                <i class="bi bi-bank2" style="font-size: 2rem;"></i>
+                            </div>
+                            <div>
+                                <h3 class="mb-1 fw-bold">Bank of America</h3>
+                                <p class="mb-0 opacity-75">Customizable rewards and banking relationship benefits</p>
+                            </div>
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card card-selectable h-100" data-card="Bank of America,Customized Cash Rewards">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start">
+                                            <div class="card-icon me-3">
+                                                <i class="bi bi-gear text-info" style="font-size: 1.8rem;"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-2 fw-bold text-dark">Customized Cash Rewards</h5>
+                                                <p class="card-text text-muted mb-3">Customizable Cashback</p>
+                                                <div class="benefits-preview">
+                                                    <span class="badge bg-warning-subtle text-warning me-1 mb-1">3% Choice</span>
+                                                    <span class="badge bg-info-subtle text-info mb-1">2% Grocery</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="selected_cards" id="selectedCards" value="">
+                    
+                    <div class="border-top" style="background: var(--bg-primary); border-color: var(--border-color) !important; position: fixed; bottom: 0; left: 0; right: 0; z-index: 1060; padding: 1rem 1.5rem; margin: 0;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="selected-info small" id="selectedInfo" style="color: var(--text-secondary);">
+                                <i class="bi bi-info-circle me-1"></i>
+                                <span>Select one or more cards to add to your collection</span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn" data-bs-dismiss="modal" style="border: 1px solid var(--border-color); color: var(--text-secondary); background: transparent;">
+                                    <i class="bi bi-x-lg me-1"></i>Cancel
+                                </button>
+                                <button type="submit" class="btn px-4" id="addCardsBtn" disabled style="background: var(--success-color); color: white; border: none;">
+                                    <i class="bi bi-plus-circle me-2"></i>
+                                    <span id="addCardsBtnText">Add Selected Cards</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Quick Add Modal Styles */
+.card-selectable {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid var(--border-color);
+    background: var(--bg-tertiary);
+    min-height: 180px;
+    position: relative;
+    overflow: hidden;
+}
+
+.card-selectable:hover {
+    border-color: var(--accent-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.card-selectable.selected {
+    border-color: var(--success-color);
+    background: rgba(16, 185, 129, 0.1);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    transform: translateY(-2px);
+}
+
+.card-selectable.selected .card-title {
+    color: var(--success-color) !important;
+}
+
+.card-selectable .selection-indicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    background: var(--bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.card-selectable.selected .selection-indicator {
+    background: var(--success-color);
+    border-color: var(--success-color);
+    color: white;
+}
+
+.card-image-container {
+    height: 140px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.card-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transition: transform 0.3s ease;
+    border-radius: 6px;
+}
+
+.card-selectable:hover .card-image {
+    transform: scale(1.05);
+}
+
+.card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.card-selectable:hover .card-icon {
+    background: rgba(59, 130, 246, 0.1);
+    transform: scale(1.05);
+}
+
+.card-selectable.selected .card-icon {
+    background: rgba(16, 185, 129, 0.1);
+    transform: scale(1.05);
+}
+
+.bank-section {
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 2rem;
+}
+
+.bank-header {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border-radius: 10px;
+}
+
+.benefits-preview .badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.modal-xl {
+    max-width: 1400px;
+}
+
+.sticky-bottom {
+    position: sticky;
+    bottom: 0;
+    margin: 0 -1.5rem -1.5rem -1.5rem;
+    padding: 1rem 1.5rem;
+    border-radius: 0 0 0.375rem 0.375rem;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+}
+
+.modal-content.bg-dark .search-container .input-group-text {
+    background: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.modal-content.bg-dark .search-container .form-control {
+    background: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.modal-content.bg-dark .search-container .form-control:focus {
+    background: var(--bg-tertiary) !important;
+    border-color: var(--accent-color) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+}
+
+.modal-content.bg-dark .search-container .form-control::placeholder {
+    color: var(--text-secondary) !important;
+    opacity: 0.8;
+}
+
+.modal-content.bg-dark .selected-cards-summary .alert {
+    background: rgba(16, 185, 129, 0.1) !important;
+    border: 1px solid rgba(16, 185, 129, 0.2) !important;
+    color: var(--text-primary) !important;
+}
+
+.selected-card-badge {
+    background: var(--bs-primary);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.selected-card-badge .remove-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.7rem;
+}
+
+.selected-card-badge .remove-btn:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+/* Animation for card selection */
+@keyframes cardSelect {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+.card-selectable.selecting {
+    animation: cardSelect 0.3s ease;
+}
+
+/* Accessibility */
+.card-selectable:focus {
+    outline: 2px solid var(--bs-focus-ring-color);
+    outline-offset: 2px;
+}
+
+.card-selectable:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .modal-xl {
+        max-width: 95%;
+    }
+    
+    .bank-header {
+        flex-direction: column;
+        text-align: center;
+        padding: 1.5rem !important;
+    }
+    
+    .bank-header .bank-logo {
+        margin-bottom: 0.5rem;
+        margin-right: 0 !important;
+    }
+    
+    .card-selectable {
+        min-height: 120px;
+    }
+    
+    .search-container .input-group {
+        flex-direction: column;
+    }
+    
+    .search-container .input-group-text,
+    .search-container .form-control,
+    .search-container .btn {
+        border-radius: 0.375rem !important;
+        border: 1px solid var(--bs-border-color) !important;
+    }
+    
+    .selected-cards-list {
+        max-height: 150px;
+        overflow-y: auto;
+    }
+}
+
+/* Card Title Color Fix for Dark Mode */
+.modal-content.bg-dark .card-selectable .card-title {
+    color: var(--text-primary) !important;
+}
+
+.modal-content.bg-dark .card-selectable .card-text {
+    color: var(--text-secondary) !important;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+    .bank-header {
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    
+    .card-selectable:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    
+    .card-selectable.selected {
+        box-shadow: 0 4px 12px rgba(var(--bs-success-rgb), 0.3);
+    }
+    
+    .sticky-bottom {
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectableCards = document.querySelectorAll('.card-selectable');
+    const selectedCardsInput = document.getElementById('selectedCards');
+    const addCardsBtn = document.getElementById('addCardsBtn');
+    const addCardsBtnText = document.getElementById('addCardsBtnText');
+    const selectedCardsSummary = document.getElementById('selectedCardsSummary');
+    const selectedCardsText = document.getElementById('selectedCardsText');
+    const selectedCardsList = document.getElementById('selectedCardsList');
+    const clearAllSelections = document.getElementById('clearAllSelections');
+    const cardSearchInput = document.getElementById('cardSearch');
+    const clearSearchBtn = document.getElementById('clearSearch');
+    
+    let selectedCards = new Set();
+    
+    // Card image mapping - now using all local static files organized by bank
+    const cardImages = {
+        "Chase": {
+            "Sapphire Reserved": "/static/images/chase/chase_sapphire_reserve_card.png",
+            "Sapphire Preferred": "/static/images/chase/chase_sapphire_preferred_card.png",
+            "Freedom Flex": "/static/images/chase/chase_freedom_flex_card.jpeg",
+            "Freedom": "/static/images/chase/chase_freedom_card.jpeg",
+            "Business Ink Cash": "/static/images/chase/chase_ink_cash_card.png",
+            "Business Ink Unlimited": "/static/images/chase/chase_ink_unlimited_card.png",
+            "Business Ink Preferred": "/static/images/chase/chase_ink_preferred_card.png",
+            "Marriott Bonvoy Boundless": "/static/images/chase/chase_marriott_bonvoy_boundless_card.png",
+            "IHG Premier One Rewards": "/static/images/chase/chase_ihg_premier_card.png"
+        },
+        "American Express": {
+            "Platinum": "/static/images/american_express/amex_platinum_card.avif",
+            "Gold": "/static/images/american_express/amex_gold_card.avif",
+            "Green": "/static/images/american_express/amex_green_card.avif",
+            "Business Platinum": "/static/images/american_express/amex_business_platinum.avif",
+            "Business Gold": "/static/images/american_express/amex_business_gold.avif",
+            "Blue Business Plus": "/static/images/american_express/amex_blue_business_plus_card.avif"
+        },
+        "Citi": {
+            "Double Cash": "/static/images/citi/citi_double_cash_credit_card.webp",
+            "Strata Premier": "/static/images/citi/citi_strata_premier_credit_card.webp",
+            "Strata Elite": "/static/images/citi/citi_strata_elite_credit_card.webp",
+            "AAdvantage Platinum Select": "/static/images/citi/citi_aadvantage_platinum_elite_credit_card.webp"
+        },
+        "Capital One": {
+            "Venture X": "/static/images/capital_one/c1_venture_x_card.avif"
+        },
+        "Bank of America": {
+            "Customized Cash Rewards": "/static/images/bank_of_america/boa__customize_cash_rewards_card.jpeg"
+        }
+    };
+
+    const bankPlaceholders = {
+        "Chase": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='190'><rect width='100%' height='100%' fill='%23005CBB'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='Arial' font-size='20' font-weight='bold'>CHASE</text></svg>",
+        "American Express": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='190'><rect width='100%' height='100%' fill='%23006FCF'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='Arial' font-size='20' font-weight='bold'>AMEX</text></svg>",
+        "Citi": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='190'><rect width='100%' height='100%' fill='%23D32F2F'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='Arial' font-size='20' font-weight='bold'>CITI</text></svg>",
+        "Capital One": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='190'><rect width='100%' height='100%' fill='%23004879'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='Arial' font-size='18' font-weight='bold'>CAPITAL ONE</text></svg>",
+        "Bank of America": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='190'><rect width='100%' height='100%' fill='%23E53E3E'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='Arial' font-size='16' font-weight='bold'>BANK OF AMERICA</text></svg>"
+    };
+    
+    // Add selection indicators and images to all cards
+    selectableCards.forEach(card => {
+        // Add selection indicator
+        if (!card.querySelector('.selection-indicator')) {
+            const indicator = document.createElement('div');
+            indicator.className = 'selection-indicator';
+            indicator.innerHTML = '<i class="bi bi-check"></i>';
+            card.appendChild(indicator);
+        }
+        
+        // Add card image if not present
+        if (!card.querySelector('.card-image-container')) {
+            const cardData = card.getAttribute('data-card');
+            const [bank, cardName] = cardData.split(',');
+            
+            // Get image URL
+            let imageUrl = bankPlaceholders[bank] || "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='190'><rect width='100%' height='100%' fill='%236C757D'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='Arial' font-size='16' font-weight='bold'>CREDIT CARD</text></svg>";
+            if (cardImages[bank] && cardImages[bank][cardName]) {
+                imageUrl = cardImages[bank][cardName];
+            }
+            
+            // Create image container
+            const imageContainer = document.createElement('div');
+            imageContainer.className = 'card-image-container';
+            
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.alt = `${bank} ${cardName}`;
+            img.className = 'card-image';
+            img.onerror = function() {
+                this.src = bankPlaceholders[bank] || "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='190'><rect width='100%' height='100%' fill='%236C757D'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='Arial' font-size='16' font-weight='bold'>CREDIT CARD</text></svg>";
+            };
+            
+            imageContainer.appendChild(img);
+            
+            // Insert before card body
+            const cardBody = card.querySelector('.card-body');
+            if (cardBody) {
+                card.insertBefore(imageContainer, cardBody);
+                
+                // Reduce card body padding since we have image now
+                cardBody.className = cardBody.className.replace('p-4', 'p-3');
+            }
+        }
+    });
+
+    function updateUI() {
+        const count = selectedCards.size;
+        
+        // Update button state
+        addCardsBtn.disabled = count === 0;
+        addCardsBtnText.textContent = count === 0 ? 'Add Selected Cards' : 
+                                      count === 1 ? 'Add 1 Card' : 
+                                      `Add ${count} Cards`;
+        
+        // Update summary visibility
+        selectedCardsSummary.style.display = count > 0 ? 'block' : 'none';
+        selectedCardsText.textContent = count === 0 ? '0 cards selected' : 
+                                        count === 1 ? '1 card selected' : 
+                                        `${count} cards selected`;
+        
+        // Update selected cards list
+        selectedCardsList.innerHTML = '';
+        selectedCards.forEach(cardData => {
+            const [bank, cardName] = cardData.split(',');
+            const badge = document.createElement('div');
+            badge.className = 'selected-card-badge';
+            badge.innerHTML = `
+                <span>${bank} ${cardName}</span>
+                <button type="button" class="remove-btn" data-card="${cardData}">
+                    <i class="bi bi-x"></i>
+                </button>
+            `;
+            selectedCardsList.appendChild(badge);
+        });
+        
+        // Update hidden input
+        selectedCardsInput.value = Array.from(selectedCards).join('|');
+        
+        // Add button animation
+        if (count > 0) {
+            addCardsBtn.style.transform = 'scale(1.02)';
+            setTimeout(() => {
+                addCardsBtn.style.transform = 'scale(1)';
+            }, 150);
+        }
+    }
+
+    function toggleCardSelection(card) {
+        const cardData = card.getAttribute('data-card');
+        
+        if (selectedCards.has(cardData)) {
+            selectedCards.delete(cardData);
+            card.classList.remove('selected');
+        } else {
+            selectedCards.add(cardData);
+            card.classList.add('selected');
+            card.classList.add('selecting');
+            setTimeout(() => card.classList.remove('selecting'), 300);
+        }
+        
+        updateUI();
+    }
+
+    // Card click handlers
+    selectableCards.forEach(card => {
+        card.addEventListener('click', function(e) {
+            e.preventDefault();
+            toggleCardSelection(this);
+        });
+
+        // Keyboard support
+        card.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleCardSelection(this);
+            }
+        });
+
+        // Accessibility
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('role', 'checkbox');
+        card.setAttribute('aria-checked', 'false');
+        card.setAttribute('aria-label', `Select ${card.querySelector('.card-title').textContent} credit card`);
+    });
+
+    // Remove card from selection
+    selectedCardsList.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-btn')) {
+            const cardData = e.target.closest('.remove-btn').getAttribute('data-card');
+            selectedCards.delete(cardData);
+            
+            // Update card visual state
+            const card = document.querySelector(`[data-card="${cardData}"]`);
+            if (card) {
+                card.classList.remove('selected');
+                card.setAttribute('aria-checked', 'false');
+            }
+            
+            updateUI();
+        }
+    });
+
+    // Clear all selections
+    clearAllSelections.addEventListener('click', function() {
+        selectedCards.clear();
+        selectableCards.forEach(card => {
+            card.classList.remove('selected');
+            card.setAttribute('aria-checked', 'false');
+        });
+        updateUI();
+    });
+
+    // Search functionality
+    function performSearch() {
+        const searchTerm = cardSearchInput.value.toLowerCase().trim();
+        const bankSections = document.querySelectorAll('.bank-section');
+        
+        bankSections.forEach(section => {
+            const cards = section.querySelectorAll('.card-selectable');
+            let hasVisibleCards = false;
+            
+            cards.forEach(card => {
+                const cardTitle = card.querySelector('.card-title').textContent.toLowerCase();
+                const cardDescription = card.querySelector('.card-text').textContent.toLowerCase();
+                const bankName = section.querySelector('h3').textContent.toLowerCase();
+                
+                const isVisible = searchTerm === '' || 
+                                cardTitle.includes(searchTerm) || 
+                                cardDescription.includes(searchTerm) || 
+                                bankName.includes(searchTerm);
+                
+                card.closest('.col-md-6').style.display = isVisible ? 'block' : 'none';
+                if (isVisible) hasVisibleCards = true;
+            });
+            
+            // Show/hide entire bank section
+            section.style.display = hasVisibleCards ? 'block' : 'none';
+        });
+        
+        // Update clear button
+        clearSearchBtn.style.display = searchTerm ? 'block' : 'none';
+    }
+
+    cardSearchInput.addEventListener('input', performSearch);
+    cardSearchInput.addEventListener('keyup', function(e) {
+        if (e.key === 'Escape') {
+            this.value = '';
+            performSearch();
+        }
+    });
+
+    clearSearchBtn.addEventListener('click', function() {
+        cardSearchInput.value = '';
+        performSearch();
+        cardSearchInput.focus();
+    });
+
+    // Modal reset
+    const modal = document.getElementById('quickAddModal');
+    modal.addEventListener('show.bs.modal', function() {
+        // Reset everything
+        selectedCards.clear();
+        selectableCards.forEach(card => {
+            card.classList.remove('selected');
+            card.setAttribute('aria-checked', 'false');
+            card.closest('.col-md-6').style.display = 'block';
+        });
+        document.querySelectorAll('.bank-section').forEach(section => {
+            section.style.display = 'block';
+        });
+        cardSearchInput.value = '';
+        clearSearchBtn.style.display = 'none';
+        updateUI();
+    });
+
+    // Update aria-checked when selection changes
+    function updateAriaStates() {
+        selectableCards.forEach(card => {
+            const cardData = card.getAttribute('data-card');
+            const isSelected = selectedCards.has(cardData);
+            card.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+        });
+    }
+
+    // Call updateAriaStates whenever selection changes
+    const originalUpdateUI = updateUI;
+    updateUI = function() {
+        originalUpdateUI();
+        updateAriaStates();
+    };
+
+    // Initialize
+    updateUI();
+});
+</script>
+
+<style>
+/* Credit Card List View Styles */
+.credit-card-image {
+    height: 190px;
+    border-radius: 0.375rem 0.375rem 0 0;
+    padding: 12px 8px;
+}
+
+.credit-card-image-display {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+    transition: transform 0.3s ease;
+}
+
+.credit-card-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+}
+
+.credit-card-placeholder i {
+    font-size: 3rem;
+    opacity: 0.7;
+}
+
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid rgba(0,0,0,0.125);
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.card:hover .credit-card-image-display {
+    transform: scale(1.05);
+}
+
+.credit-card-list .card-body {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+}
+
+.credit-card-list .card-title {
+    color: white !important;
+    font-size: 1.3rem;
+    font-weight: 700;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.credit-card-list .text-light {
+    color: #ecf0f1 !important;
+    font-size: 1.1rem;
+    font-weight: 500;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Card count text styling - specific to avoid conflicts */
+.index-page .text-muted {
+    color: #495057 !important;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+</style>
+
+</div>
+{% endblock %}
